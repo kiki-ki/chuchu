@@ -1,0 +1,30 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+name: "CI"
+permissions: {}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install zsh
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Syntax check
+        run: zsh -n chuchu.plugin.zsh
+      - name: Unit tests
+        run: zsh tests/chuchu.test.zsh
+      - name: End-to-end tests
+        timeout-minutes: 1
+        run: zsh tests/e2e.test.zsh
