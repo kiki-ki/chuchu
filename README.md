@@ -1,4 +1,4 @@
-# 💧 Chuchu
+# 💧 chuchu
 
 Tints your terminal background by where you are.<br>
 Like a Chuchu, it takes on a different color depending on where it lives.
