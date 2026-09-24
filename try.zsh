@@ -1,5 +1,4 @@
 #!/usr/bin/env zsh
-# Opens a throwaway shell with only chuchu loaded, to try it without touching ~/.zshrc.
 
 TMP_HOME=$(mktemp -d)
 PLUGIN_DIR=${0:A:h}

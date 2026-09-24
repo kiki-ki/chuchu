@@ -1,7 +1,4 @@
 #!/usr/bin/env zsh
-# Drives a real interactive zsh through a pseudo-terminal, so the hooks,
-# alias expansion and escape sequences are exercised as a user would see them.
-# Run: zsh tests/e2e.test.zsh
 
 zmodload zsh/zpty zsh/zselect
 
@@ -21,8 +18,7 @@ EOF
 
 typeset -gi failures=0
 
-# Sets REPLY to everything printed until the next prompt. Gives up after 10s
-# with what arrived so far, so a shell stuck on some question fails loudly.
+# Times out so a shell stuck on a question fails instead of hanging
 wait_prompt() {
   local chunk deadline=$(( SECONDS + 10 ))
   REPLY=
@@ -38,18 +34,15 @@ wait_prompt() {
   exit 1
 }
 
-# Runs a line and returns everything printed until the next prompt
 run() {
   zpty -w shell "$1"
   wait_prompt
 }
 
-# -f skips system-wide startup files, which may ask questions (e.g. compinit on
-# Ubuntu) or set their own prompt
+# -f: system rc files may ask questions (compinit on Ubuntu)
 zpty shell "zsh -f -i"
 run "source $tmp/rc.zsh"
 
-# A third argument of "not" inverts the match
 expect() {
   local name=$1 pattern=$2 want=1 matched=0
   [[ $3 == not ]] && want=0
