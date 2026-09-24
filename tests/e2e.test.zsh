@@ -3,7 +3,7 @@
 # alias expansion and escape sequences are exercised as a user would see them.
 # Run: zsh tests/e2e.test.zsh
 
-zmodload zsh/zpty
+zmodload zsh/zpty zsh/zselect
 
 local root=${0:A:h:h} tmp=$(mktemp -d)
 trap 'zpty -d shell 2>/dev/null; rm -rf $tmp' EXIT
@@ -11,24 +11,43 @@ trap 'zpty -d shell 2>/dev/null; rm -rf $tmp' EXIT
 mkdir $tmp/bin
 print '#!/bin/sh\nexit 0' > $tmp/bin/kubectl
 chmod +x $tmp/bin/kubectl
-cat > $tmp/.zshrc <<EOF
+cat > $tmp/rc.zsh <<EOF
 PATH=$tmp/bin:\$PATH
 PS1='READY> '
+unset zle_bracketed_paste
 alias k=kubectl
 source $root/chuchu.plugin.zsh
 EOF
 
-zpty shell "ZDOTDIR=$tmp zsh -i"
-
 typeset -gi failures=0
+
+# Sets REPLY to everything printed until the next prompt. Gives up after 10s
+# with what arrived so far, so a shell stuck on some question fails loudly.
+wait_prompt() {
+  local chunk deadline=$(( SECONDS + 10 ))
+  REPLY=
+  while (( SECONDS < deadline )); do
+    if zpty -rt shell chunk; then
+      REPLY+=$chunk
+      [[ $REPLY == *'READY> '* ]] && return 0
+    else
+      zselect -t 5
+    fi
+  done
+  print "FAIL no prompt within 10s: ${(q+)REPLY}"
+  exit 1
+}
 
 # Runs a line and returns everything printed until the next prompt
 run() {
-  local out
   zpty -w shell "$1"
-  zpty -r -m shell out '*READY> '
-  REPLY=$out
+  wait_prompt
 }
+
+# -f skips system-wide startup files, which may ask questions (e.g. compinit on
+# Ubuntu) or set their own prompt
+zpty shell "zsh -f -i"
+run "source $tmp/rc.zsh"
 
 # A third argument of "not" inverts the match
 expect() {
@@ -43,13 +62,11 @@ expect() {
   fi
 }
 
-zpty -r -m shell REPLY '*READY> '
-
-local color=$(ZDOTDIR=$tmp zsh -c "source $root/chuchu.plugin.zsh; chuchu color api-7f9c")
+local color=$(zsh -f -c "source $root/chuchu.plugin.zsh; chuchu color api-7f9c")
 
 run 'k exec -it api-7f9c -- sh'
 expect 'alias is expanded and the pane is tinted' '*'$'\e]11;'$color$'\a''*'
-expect 'tint is reset before the next prompt' '*'$'\e]111\a''*READY> '
+expect 'tint is reset before the next prompt' '*'$'\e]111\a''*READY> *'
 
 run 'kubectl get pods'
 expect 'other subcommands are left alone' '*'$'\e]11;''*' not
