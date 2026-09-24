@@ -21,7 +21,6 @@ Only the first command of a line is looked at, so `ssh host | tee log` is tinted
 ## Requirements
 
 - A terminal that supports setting the background color with OSC 11 and resetting it with OSC 111.
-  Developed with Ghostty, where only the current split pane changes; other terminals with OSC 11 / 111 support should work too.
 - A dark color theme. The default colors are dark tints and would stand out harshly on a light background.
 
 ## Installation
